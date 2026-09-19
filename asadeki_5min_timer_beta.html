@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#F8E7D4">
+<title>あさでき｜5分だけタイマー</title>
+<style>
+:root{--bg:#fff8f1;--card:#fff;--text:#493b35;--muted:#8b7a70;--accent:#d98262;--accent2:#f3c6a8;--line:#eadbd0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Yu Gothic",sans-serif}
+main{max-width:520px;margin:auto;padding:28px 18px 40px;text-align:center}
+.logo{font-size:14px;letter-spacing:.18em;color:var(--muted);margin-bottom:8px}.title{font-size:26px;font-weight:700;margin:0 0 6px}.lead{color:var(--muted);font-size:14px;margin:0 0 26px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:30px 20px;box-shadow:0 8px 30px rgba(80,55,40,.06)}
+.time{font-size:76px;font-weight:700;letter-spacing:.03em;font-variant-numeric:tabular-nums;margin:8px 0 12px}.msg{min-height:24px;color:var(--muted);font-size:15px;margin-bottom:22px}
+.buttons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}button{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:999px;padding:12px 22px;font-size:15px;min-width:112px;min-height:48px;cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.music{margin-top:22px;color:var(--muted);font-size:13px}.music label{display:inline-flex;align-items:center;gap:7px}.music input{width:18px;height:18px}.foot{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.7}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent2);outline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">あさでき</div>
+  <h1 class="title">5分だけ、やってみよ。</h1>
+  <p class="lead">重い腰を、ちょっとだけ動かすための5分。</p>
+  <section class="card" aria-label="5分タイマー">
+    <div id="time" class="time" aria-live="polite">05:00</div>
+    <div id="msg" class="msg">準備ができたら、スタート。</div>
+    <div class="buttons">
+      <button id="start" class="primary" type="button">スタート</button>
+      <button id="reset" type="button">リセット</button>
+    </div>
+    <div class="music">
+      <label><input id="sound" type="checkbox" checked> やさしい音を流す</label>
+    </div>
+  </section>
+  <div class="foot">5分できたら、それだけでナイッスぅぅぅ！👏</div>
+</main>
+<script>
+(() => {
+  const timeEl=document.getElementById('time'), msg=document.getElementById('msg');
+  const start=document.getElementById('start'), reset=document.getElementById('reset'), sound=document.getElementById('sound');
+  const TOTAL=300; let remaining=TOTAL,running=false,endAt=0,raf=null,audio=null;
+
+  const format=s=>{s=Math.max(0,Math.ceil(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+  const draw=()=>timeEl.textContent=format(remaining);
+
+  function beep(freq=660,dur=.16){
+    if(!sound.checked)return;
+    try{
+      audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+      if(audio.state==='suspended') audio.resume();
+      const o=audio.createOscillator(),g=audio.createGain();
+      o.type='sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(.0001,audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(.10,audio.currentTime+.02);
+      g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+dur);
+      o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+dur+.03);
+    }catch(e){}
+  }
+  function finish(){
+    running=false;remaining=0;draw();start.textContent='もう一度スタート';
+    msg.textContent='5分間、おつかれさま。ナイッスぅぅぅ！👏';
+    beep(523,.18);setTimeout(()=>beep(659,.18),180);setTimeout(()=>beep(784,.30),360);
+    cancelAnimationFrame(raf);
+  }
+  function tick(){
+    if(!running)return;
+    remaining=Math.max(0,(endAt-Date.now())/1000);draw();
+    if(remaining<=0){finish();return}
+    raf=requestAnimationFrame(tick);
+  }
+  start.addEventListener('click',()=>{
+    if(running){running=false;cancelAnimationFrame(raf);start.textContent='再開';msg.textContent='ひと休み中。';return}
+    if(remaining<=0)remaining=TOTAL;
+    running=true;endAt=Date.now()+remaining*1000;
+    start.textContent='一時停止';msg.textContent='5分だけ、やってみよう。';
+    beep(660,.12);tick();
+  });
+  reset.addEventListener('click',()=>{
+    running=false;cancelAnimationFrame(raf);remaining=TOTAL;draw();
+    start.textContent='スタート';msg.textContent='準備ができたら、スタート。';
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
